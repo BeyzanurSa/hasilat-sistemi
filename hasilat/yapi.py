@@ -52,7 +52,7 @@ def extract_sap_data(file_path, sheet_name):
         visa_df = df[df['Tayin'] == 'VISA'].copy()
         
         def get_last_amount_per_person(df_section):
-            """Her kişi için son tutarı al"""
+            """Her kişi için iş alanlarına göre son tutarları al ve topla"""
             if df_section.empty:
                 return pd.DataFrame(columns=['YTP Sicil No', 'Tutar'])
             
@@ -65,10 +65,13 @@ def extract_sap_data(file_path, sheet_name):
             # Index'e göre sırala (son kayıt = en büyük index)
             df_with_sicil = df_with_sicil.sort_index()
             
-            # Her sicil no için son kaydı al
-            last_records = df_with_sicil.groupby('YTP Sicil No').tail(1)
+            # Her sicil no ve iş alanı kombinasyonu için son kaydı al
+            last_records_per_area = df_with_sicil.groupby(['YTP Sicil No', 'İş Alanı']).tail(1)
             
-            return last_records[['YTP Sicil No', 'Tutar']].copy()
+            # Her sicil no için farklı iş alanlarındaki son tutarları topla
+            person_totals = last_records_per_area.groupby('YTP Sicil No')['Tutar'].sum().reset_index()
+            
+            return person_totals
         
         # Her kişi için son tutarları al
         nakit_summary = get_last_amount_per_person(nakit_df)
@@ -127,6 +130,61 @@ def extract_sap_data(file_path, sheet_name):
         print(f"Hata oluştu: {str(e)}")
         return pd.DataFrame()
 
+def duzenle_kagit_verisi():
+    """
+    'kağıt' sayfasındaki verileri yapılandırıp 'kağıt_yapılandırılmış' olarak yeni sayfaya yazar.
+    """
+    try:
+        input_path = "hasilat/Hasilat_karsilastirma_sistemi_1.xlsx"
+        df_all = pd.read_excel(input_path, sheet_name="kağıt", header=None)
+
+        # Geçerli sütunlara göre sadece sayı içeren satırları al
+        df = df_all[df_all[0].apply(lambda x: str(x).isdigit())].copy()
+
+        df.columns = [
+            "Sicil", "YTP Sicil No", "Adı Soyadı", "Nakit", "Vakıf", "Ziraat", "Visa Toplam", "Toplam"
+        ]
+
+        # Visa Toplam yoksa hesapla
+        df["Visa Toplam"] = pd.to_numeric(df["Visa Toplam"], errors="coerce")
+        missing_visa = df["Visa Toplam"].isna()
+        if missing_visa.any():
+            df["Vakıf"] = pd.to_numeric(df["Vakıf"], errors="coerce").fillna(0)
+            df["Ziraat"] = pd.to_numeric(df["Ziraat"], errors="coerce").fillna(0)
+            df.loc[missing_visa, "Visa Toplam"] = df["Vakıf"] + df["Ziraat"]
+
+        # Nakit ve Visa toplamını kullanarak yeni toplam hesapla
+        df["Nakit"] = pd.to_numeric(df["Nakit"], errors="coerce").fillna(0)
+        df["Visa Toplam"] = pd.to_numeric(df["Visa Toplam"], errors="coerce").fillna(0)
+        df["Yeni Toplam"] = df["Nakit"] + df["Visa Toplam"]
+
+        # Yeni yapılandırılmış tablo
+        final = df[["YTP Sicil No", "Nakit", "Visa Toplam", "Yeni Toplam"]].copy()
+        final = final.rename(columns={"Yeni Toplam": "Toplam"})
+
+        # Genel toplam satırı
+        genel_satir = pd.DataFrame([{
+            "YTP Sicil No": "Genel Toplam",
+            "Nakit": final["Nakit"].sum(),
+            "Visa Toplam": final["Visa Toplam"].sum(),
+            "Toplam": final["Toplam"].sum()
+        }])
+
+        final = pd.concat([final, genel_satir], ignore_index=True)
+
+        # Sütun adlarını yeniden adlandır
+        final.rename(columns={
+            "Nakit": "Nakit Toplam",
+            "Toplam": "Genel Toplam"
+        }, inplace=True)
+
+        # Yeni sayfaya yaz
+        with pd.ExcelWriter(input_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            final.to_excel(writer, sheet_name="kağıt_yapılandırılmış", index=False)
+        print("✅ 'kağıt_yapılandırılmış' sayfası başarıyla oluşturuldu.")
+    except Exception as e:
+        print(f"❌ Hata oluştu: {e}")
+
 def main():
     """Ana fonksiyon"""
     # Dosya yolu ve sayfa adı
@@ -146,13 +204,11 @@ def main():
     print("\n=== İşlenmiş SAP Verisi ===")
     print(sap_verisi.to_string(index=False))
     
-    # Dosya adını belirle
-    output_file = "SAP_Yapilandirilmis.xlsx"
-    
     try:
-        # Excel olarak kaydet
-        sap_verisi.to_excel(output_file, index=False, engine="openpyxl")
-        print(f"\n✅ Yapılandırılmış veri '{output_file}' olarak kaydedildi.")
+        # Aynı Excel dosyasına "sap_yapılandırılmış" sayfası olarak kaydet
+        with pd.ExcelWriter(dosya_yolu, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            sap_verisi.to_excel(writer, sheet_name="sap_yapılandırılmış", index=False)
+        print(f"\n✅ SAP verisi 'sap_yapılandırılmış' sayfası olarak '{dosya_yolu}' içine kaydedildi.")
         
         # Özet bilgi
         print(f"\n=== Özet ===")
@@ -163,8 +219,21 @@ def main():
             print(f"Toplam Visa: {genel_toplam_satir['Visa Toplam'].iloc[0]:.2f}")
             print(f"Genel Toplam: {genel_toplam_satir['Genel Toplam'].iloc[0]:.2f}")
         
+        # İş alanı bazında detay göster (sadece ilk 5 kişi)
+        print(f"\n=== Detay Kontrol (İlk 5 Kişi) ===")
+        for i in range(min(5, len(sap_verisi) - 1)):  # Genel toplam hariç
+            sicil = sap_verisi.iloc[i]['YTP Sicil No']
+            nakit = sap_verisi.iloc[i]['Nakit Toplam']
+            visa = sap_verisi.iloc[i]['Visa Toplam']
+            print(f"Sicil: {sicil} | Nakit: {nakit:.2f} | Visa: {visa:.2f}")
+        
     except Exception as e:
         print(f"❌ Excel dosyası kaydedilirken hata oluştu: {str(e)}")
+    
+    # Kağıt verisini de düzenle
+    print("\n--- Kağıt verisi yapılandırılıyor ---")
+    duzenle_kagit_verisi()
+    
 
 if __name__ == "__main__":
     main()
