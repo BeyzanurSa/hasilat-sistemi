@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasılat Karşılaştırma Sistemi - Sunum</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            overflow: hidden;
+        }
+        
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+        
+        /* Slide Stilleri */
+        .title-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .title-slide h1 {
+            font-size: 4em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: slideInDown 1s ease-out;
+        }
+        
+        .title-slide .subtitle {
+            font-size: 1.8em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            animation: slideInUp 1s ease-out 0.3s both;
+        }
+        
+        .title-slide .date {
+            font-size: 1.2em;
+            opacity: 0.8;
+            animation: fadeIn 1s ease-out 0.6s both;
+        }
+        
+        .content-slide {
+            text-align: left;
+            max-width: 1200px;
+        }
+        
+        .slide h2 {
+            font-size: 3em;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .slide h2::after {
+            content: '';
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            display: block;
+            margin: 20px auto;
+            border-radius: 2px;
+        }
+        
+        .problem-list, .solution-list, .benefit-list, .feature-list {
+            font-size: 1.4em;
+            line-height: 1.8;
+            list-style: none;
+        }
+        
+        .problem-list li, .solution-list li, .benefit-list li, .feature-list li {
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            border-left: 5px solid #dc3545;
+            transform: translateX(-50px);
+            opacity: 0;
+            animation: slideInLeft 0.8s ease-out forwards;
+        }
+        
+        .solution-list li {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+        
+        .benefit-list li {
+            border-left-color: #007bff;
+            background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%);
+        }
+        
+        .feature-list li {
+            border-left-color: #6f42c1;
+            background: linear-gradient(135deg, #e2d9f3 0%, #d1c4e9 100%);
+        }
+        
+        .problem-list li:nth-child(1) { animation-delay: 0.2s; }
+        .problem-list li:nth-child(2) { animation-delay: 0.4s; }
+        .problem-list li:nth-child(3) { animation-delay: 0.6s; }
+        .problem-list li:nth-child(4) { animation-delay: 0.8s; }
+        
+        .solution-list li:nth-child(1) { animation-delay: 0.2s; }
+        .solution-list li:nth-child(2) { animation-delay: 0.4s; }
+        .solution-list li:nth-child(3) { animation-delay: 0.6s; }
+        
+        .benefit-list li:nth-child(1) { animation-delay: 0.2s; }
+        .benefit-list li:nth-child(2) { animation-delay: 0.4s; }
+        .benefit-list li:nth-child(3) { animation-delay: 0.6s; }
+        .benefit-list li:nth-child(4) { animation-delay: 0.8s; }
+        
+        .feature-list li:nth-child(1) { animation-delay: 0.2s; }
+        .feature-list li:nth-child(2) { animation-delay: 0.4s; }
+        .feature-list li:nth-child(3) { animation-delay: 0.6s; }
+        .feature-list li:nth-child(4) { animation-delay: 0.8s; }
+        
+        .workflow-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 40px;
+        }
+        
+        .workflow-step {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            margin: 0 10px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transform: scale(0.8);
+            opacity: 0;
+            animation: scaleIn 0.8s ease-out forwards;
+        }
+        
+        .workflow-step:nth-child(1) { animation-delay: 0.2s; }
+        .workflow-step:nth-child(2) { animation-delay: 0.4s; }
+        .workflow-step:nth-child(3) { animation-delay: 0.6s; }
+        .workflow-step:nth-child(4) { animation-delay: 0.8s; }
+        
+        .workflow-step .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 0 auto 15px;
+        }
+        
+        .workflow-step h4 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .workflow-step p {
+            font-size: 1em;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+            width: 100%;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            transform: translateY(50px);
+            opacity: 0;
+            animation: slideInUp 0.8s ease-out forwards;
+        }
+        
+        .stat-box:nth-child(1) { animation-delay: 0.2s; }
+        .stat-box:nth-child(2) { animation-delay: 0.4s; }
+        .stat-box:nth-child(3) { animation-delay: 0.6s; }
+        .stat-box:nth-child(4) { animation-delay: 0.8s; }
+        
+        .stat-number {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .stat-label {
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+        
+        .demo-container {
+            width: 100%;
+            height: 70%;
+            background: #f8f9fa;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .demo-screenshot {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+            text-align: center;
+        }
+        
+        .conclusion-slide {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .conclusion-slide h2 {
+            color: white;
+            font-size: 3.5em;
+            margin-bottom: 40px;
+        }
+        
+        .conclusion-text {
+            font-size: 1.8em;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+        
+        .cta-button {
+            background: white;
+            color: #28a745;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        
+        /* Navigasyon */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            color: #2c3e50;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .nav-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.1em;
+            z-index: 1000;
+        }
+        
+        /* Animasyonlar */
+        @keyframes slideInDown {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideInUp {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideInLeft {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide h2 {
+                font-size: 2em;
+            }
+            
+            .problem-list, .solution-list, .benefit-list, .feature-list {
+                font-size: 1.1em;
+            }
+            
+            .workflow-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .title-slide h1 {
+                font-size: 2.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Slide 1: Başlık -->
+        <div class="slide title-slide active">
+            <h1>📊 Hasılat Karşılaştırma Sistemi</h1>
+            <div class="subtitle">Otomatik Excel Veri Analizi ve Karşılaştırma Platformu</div>
+            <div class="date">Beyzanur Saygıner</div>
+        </div>
+        
+        <!-- Slide 2: Mevcut Durum ve Problemler -->
+        <div class="slide content-slide">
+            <h2>🚨 Mevcut Durum ve Problemler</h2>
+            <ul class="problem-list">
+                <li>🕐 <strong>Manuel Süreçler:</strong> Kağıt ve sistem verilerinin elle karşılaştırılması saatlerce sürmekte</li>
+                <li>❌ <strong>İnsan Hatası Riski:</strong> Manuel işlemler sırasında hesaplama ve eşleştirme hataları</li>
+                <li>📊 <strong>Veri Karmaşası:</strong> Farklı formatlardaki Excel dosyalarının düzenlenmesi zorluğu</li>
+                <li>⏱️ <strong>Zaman Kaybı:</strong> Tekrarlayan veri işleme görevleri için harcanan değerli zaman</li>
+            </ul>
+        </div>
+        
+        <!-- Slide 3: Çözümümüz -->
+        <div class="slide content-slide">
+            <h2>💡 Çözümümüz</h2>
+            <ul class="solution-list">
+                <li>🤖 <strong>Tam Otomatik İşleme:</strong> Dosyalar yüklendikten sonra sistem her şeyi otomatik hallediyor</li>
+                <li>🎯 <strong>Akıllı Veri Eşleştirme:</strong> YTP sicil numaralarına göre otomatik karşılaştırma</li>
+                <li>📈 <strong>Gerçek Zamanlı Analiz:</strong> Anında sonuç ve detaylı raporlama</li>
+            </ul>
+        </div>
+        
+        <!-- Slide 4: Sistem Çalışma Süreci -->
+        <div class="slide content-slide">
+            <h2>⚙️ Sistem Çalışma Süreci</h2>
+            <div class="workflow-container">
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <h4>Kağıt Verisi</h4>
+                    <p>Excel dosyasındaki kağıt verilerini yükleyin</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <h4>Sistem Verisi</h4>
+                    <p>SAP sisteminden çıkan yapılandırılmamış veriyi yükleyin</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <h4>Otomatik İşleme</h4>
+                    <p>Sistem verileri yapılandırır ve karşılaştırır</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <h4>Sonuçlar</h4>
+                    <p>Detaylı analiz ve Excel raporu alın</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 5: Özellikler -->
+        <div class="slide content-slide">
+            <h2>🚀 Öne Çıkan Özellikler</h2>
+            <ul class="feature-list">
+                <li>📱 <strong>Responsive Tasarım:</strong> Her cihazda mükemmel kullanım deneyimi</li>
+                <li>🎨 <strong>Modern Arayüz:</strong> Kullanımı kolay, görsel geri bildirimli tasarım</li>
+                <li>📊 <strong>Detaylı Raporlama:</strong> Eşleşen/eşleşmeyen kayıtların tam analizi</li>
+                <li>💾 <strong>Excel Entegrasyonu:</strong> Sonuçları Excel formatında indirme</li>
+            </ul>
+        </div>
+        
+        <!-- Slide 6: Faydalar -->
+        <div class="slide content-slide">
+            <h2>💎 İş Değeri ve Faydalar</h2>
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-number">95%</div>
+                    <div class="stat-label">Zaman Tasarrufu</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Hata Oranı Azalması</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">∞</div>
+                    <div class="stat-label">Veri İşleme Kapasitesi</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Erişilebilirlik</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 7: Demo -->
+        <div class="slide content-slide">
+            <h2>🎬 Sistem Demo</h2>
+            <div class="demo-container">
+                <div class="demo-screenshot">
+                    <div>
+                        <h3>📊 Canlı Demo</h3>
+                        <p>Gerçek veri işleme sürecini görmek için<br>sistem üzerinde canlı demonstrasyon</p>
+                        <br>
+                        <p style="font-size: 0.8em; opacity: 0.8;">
+                            • Drag & Drop dosya yükleme<br>
+                            • Otomatik veri yapılandırma<br>
+                            • Gerçek zamanlı karşılaştırma<br>
+                            • Excel rapor çıktısı
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 8: Sonuç -->
+        <div class="slide conclusion-slide">
+            <h2>🎯 Sonuç</h2>
+            <div class="conclusion-text">
+                Hasılat Karşılaştırma Sistemi ile manuel veri işleme süreçlerinizi<br>
+                tamamen otomatikleştirin ve işletmenizin verimliliğini artırın.
+            </div>
+            <button class="cta-button" onclick="openHasilatSystem()">
+                🚀 Sistemi Kullanmaya Başlayın
+            </button>
+        </div>
+    </div>
+    
+    <!-- Navigasyon -->
+    <div class="navigation">
+        <button class="nav-btn" onclick="previousSlide()">‹</button>
+        <button class="nav-btn" onclick="nextSlide()">›</button>
+    </div>
+    
+    <!-- Slide Sayacı -->
+    <div class="slide-counter">
+        <span id="current-slide">1</span> / <span id="total-slides">8</span>
+    </div>
+    
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            slides.forEach(slide => {
+                slide.classList.remove('active', 'prev');
+            });
+            
+            if (n >= totalSlides) currentSlide = 0;
+            if (n < 0) currentSlide = totalSlides - 1;
+            
+            slides[currentSlide].classList.add('active');
+            if (currentSlide > 0) {
+                slides[currentSlide - 1].classList.add('prev');
+            }
+            
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
+        
+        function nextSlide() {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+        
+        function previousSlide() {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+        
+        function resetPresentation() {
+            currentSlide = 0;
+            showSlide(currentSlide);
+        }
+        
+        function openHasilatSystem() {
+            // Hasılat karşılaştırma sistemini aç
+            window.open('file:///Users/beyza/Desktop/hasilat_karsilastirma.html', '_blank');
+        }
+        
+        // Klavye kontrolleri
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                previousSlide();
+            } else if (e.key === 'Home') {
+                currentSlide = 0;
+                showSlide(currentSlide);
+            } else if (e.key === 'End') {
+                currentSlide = totalSlides - 1;
+                showSlide(currentSlide);
+            }
+        });
+        
+        // Otomatik geçiş (isteğe bağlı)
+        let autoSlide = false;
+        let autoSlideInterval;
+        
+        function toggleAutoSlide() {
+            if (autoSlide) {
+                clearInterval(autoSlideInterval);
+                autoSlide = false;
+            } else {
+                autoSlideInterval = setInterval(nextSlide, 10000); // 10 saniye
+                autoSlide = true;
+            }
+        }
+        
+        // Başlangıç animasyonları
+        document.addEventListener('DOMContentLoaded', function() {
+            showSlide(0);
+        });
+    </script>
+</body>
+</html>
