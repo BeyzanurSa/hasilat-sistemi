@@ -817,8 +817,268 @@
             const visaData = extractedData.filter(item => item.tayin === 'VISA' && item.sicil);
             
             // Her kişi için son tutarları hesapla
-            function getLastAmountPerPerson(dataList) {
-                const personMap = new Map();
-                
-                dataList.forEach((item, index) => {
-                    const key = `
+        function getLastAmountPerPerson(dataList) {
+            const personMap = new Map();
+            
+            dataList.forEach((item, index) => {
+                const key = `${item.sicil}_${item.isAlani}`;
+                personMap.set(key, {
+                    sicil: item.sicil,
+                    tutar: item.tutar,
+                    isAlani: item.isAlani,
+                    index: index
+                });
+            });
+            
+            // Her sicil için farklı iş alanlarındaki tutarları topla
+            const sicilTotals = new Map();
+            personMap.forEach(item => {
+                if (sicilTotals.has(item.sicil)) {
+                    sicilTotals.set(item.sicil, sicilTotals.get(item.sicil) + item.tutar);
+                } else {
+                    sicilTotals.set(item.sicil, item.tutar);
+                }
+            });
+            
+            return sicilTotals;
+        }
+        
+        const nakitTotals = getLastAmountPerPerson(nakitData);
+        const visaTotals = getLastAmountPerPerson(visaData);
+        
+        // Tüm sicil numaralarını al
+        const allSicils = new Set([...nakitTotals.keys(), ...visaTotals.keys()]);
+        
+        const processedData = [];
+        allSicils.forEach(sicil => {
+            const nakitToplam = nakitTotals.get(sicil) || 0;
+            const visaToplam = visaTotals.get(sicil) || 0;
+            processedData.push({
+                sicil: sicil,
+                nakit: nakitToplam,
+                visa: visaToplam,
+                toplam: nakitToplam + visaToplam
+            });
+        });
+        
+        if (processedData.length === 0) {
+            throw new Error('Sistem verisinde geçerli kayıt bulunamadı');
+        }
+        
+        return processedData;
+    }
+    
+    function performComparison() {
+        comparisonResults = [];
+        
+        // Tüm sicil numaralarını al
+        const allSicils = new Set([
+            ...kagitProcessedData.map(item => item.sicil),
+            ...sistemProcessedData.map(item => item.sicil)
+        ]);
+        
+        allSicils.forEach(sicil => {
+            const kagitItem = kagitProcessedData.find(item => item.sicil === sicil);
+            const sistemItem = sistemProcessedData.find(item => item.sicil === sicil);
+            
+            const kagitNakit = kagitItem ? kagitItem.nakit : 0;
+            const kagitVisa = kagitItem ? kagitItem.visa : 0;
+            const kagitToplam = kagitItem ? kagitItem.toplam : 0;
+            
+            const sistemNakit = sistemItem ? sistemItem.nakit : 0;
+            const sistemVisa = sistemItem ? sistemItem.visa : 0;
+            const sistemToplam = sistemItem ? sistemItem.toplam : 0;
+            
+            const nakitFark = kagitNakit - sistemNakit;
+            const visaFark = kagitVisa - sistemVisa;
+            const toplamFark = kagitToplam - sistemToplam;
+            
+            const nakitEslesme = Math.abs(nakitFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
+            const visaEslesme = Math.abs(visaFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
+            const toplamEslesme = Math.abs(toplamFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
+            
+            comparisonResults.push({
+                sicil: sicil,
+                kagitNakit: kagitNakit,
+                sistemNakit: sistemNakit,
+                nakitFark: nakitFark,
+                nakitEslesme: nakitEslesme,
+                kagitVisa: kagitVisa,
+                sistemVisa: sistemVisa,
+                visaFark: visaFark,
+                visaEslesme: visaEslesme,
+                kagitToplam: kagitToplam,
+                sistemToplam: sistemToplam,
+                toplamFark: toplamFark,
+                toplamEslesme: toplamEslesme,
+                durum: kagitItem && sistemItem ? 'Her İkisinde de Var' : 
+                       kagitItem ? 'Sadece Kağıtta Var' : 'Sadece Sistemde Var'
+            });
+        });
+        
+        // Sonuçları göster
+        displayResults();
+    }
+    
+    function displayResults() {
+        // Özet kartlarını oluştur
+        const totalRecords = comparisonResults.length;
+        const matchingRecords = comparisonResults.filter(item => 
+            item.nakitEslesme === 'Eşleşiyor' && 
+            item.visaEslesme === 'Eşleşiyor' && 
+            item.toplamEslesme === 'Eşleşiyor'
+        ).length;
+        const mismatchingRecords = totalRecords - matchingRecords;
+        
+        const kagitTotalAmount = kagitProcessedData.reduce((sum, item) => sum + item.toplam, 0);
+        const sistemTotalAmount = sistemProcessedData.reduce((sum, item) => sum + item.toplam, 0);
+        const totalDifference = kagitTotalAmount - sistemTotalAmount;
+        
+        const summaryHTML = `
+            <div class="summary-card">
+                <h3>Toplam Kayıt</h3>
+                <div class="number">${totalRecords}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Eşleşen Kayıt</h3>
+                <div class="number" style="color: #28a745;">${matchingRecords}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Eşleşmeyen Kayıt</h3>
+                <div class="number" style="color: #dc3545;">${mismatchingRecords}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Toplam Fark</h3>
+                <div class="number" style="color: ${Math.abs(totalDifference) < 0.01 ? '#28a745' : '#dc3545'};">
+                    ${totalDifference.toFixed(2)} ₺
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('summary-cards').innerHTML = summaryHTML;
+        
+        // Detaylı sonuç tablosunu oluştur
+        let tableHTML = `
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>YTP Sicil No</th>
+                        <th>Durum</th>
+                        <th colspan="3">Nakit</th>
+                        <th colspan="3">Visa</th>
+                        <th colspan="3">Toplam</th>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <th></th>
+                        <th>Kağıt</th>
+                        <th>Sistem</th>
+                        <th>Fark / Durum</th>
+                        <th>Kağıt</th>
+                        <th>Sistem</th>
+                        <th>Fark / Durum</th>
+                        <th>Kağıt</th>
+                        <th>Sistem</th>
+                        <th>Fark / Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        comparisonResults.forEach(result => {
+            tableHTML += `
+                <tr>
+                    <td><strong>${result.sicil}</strong></td>
+                    <td>${result.durum}</td>
+                    <td>${result.kagitNakit.toFixed(2)}</td>
+                    <td>${result.sistemNakit.toFixed(2)}</td>
+                    <td>
+                        ${result.nakitFark.toFixed(2)}<br>
+                        <span class="${result.nakitEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
+                            ${result.nakitEslesme}
+                        </span>
+                    </td>
+                    <td>${result.kagitVisa.toFixed(2)}</td>
+                    <td>${result.sistemVisa.toFixed(2)}</td>
+                    <td>
+                        ${result.visaFark.toFixed(2)}<br>
+                        <span class="${result.visaEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
+                            ${result.visaEslesme}
+                        </span>
+                    </td>
+                    <td>${result.kagitToplam.toFixed(2)}</td>
+                    <td>${result.sistemToplam.toFixed(2)}</td>
+                    <td>
+                        ${result.toplamFark.toFixed(2)}<br>
+                        <span class="${result.toplamEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
+                            ${result.toplamEslesme}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += `
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('results-container').innerHTML = tableHTML;
+    }
+    
+    function exportResults() {
+        // Sonuçları Excel formatında indir
+        const ws_data = [
+            ['YTP Sicil No', 'Durum', 
+             'Kağıt Nakit', 'Sistem Nakit', 'Nakit Fark', 'Nakit Eşleşme',
+             'Kağıt Visa', 'Sistem Visa', 'Visa Fark', 'Visa Eşleşme',
+             'Kağıt Toplam', 'Sistem Toplam', 'Toplam Fark', 'Toplam Eşleşme']
+        ];
+        
+        comparisonResults.forEach(result => {
+            ws_data.push([
+                result.sicil, result.durum,
+                result.kagitNakit, result.sistemNakit, result.nakitFark, result.nakitEslesme,
+                result.kagitVisa, result.sistemVisa, result.visaFark, result.visaEslesme,
+                result.kagitToplam, result.sistemToplam, result.toplamFark, result.toplamEslesme
+            ]);
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Karşılaştırma Sonuçları");
+        
+        const today = new Date();
+        const dateStr = today.getFullYear() + '-' + 
+                       String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(today.getDate()).padStart(2, '0');
+        
+        XLSX.writeFile(wb, `Hasilat_Karsilastirma_${dateStr}.xlsx`);
+    }
+    
+    function resetApp() {
+        // Tüm verileri sıfırla
+        kagitRawData = null;
+        sistemRawData = null;
+        kagitProcessedData = [];
+        sistemProcessedData = [];
+        comparisonResults = [];
+        
+        // Form elemanlarını sıfırla
+        document.getElementById('kagit-file').value = '';
+        document.getElementById('sistem-file').value = '';
+        document.getElementById('kagit-file-info').style.display = 'none';
+        document.getElementById('sistem-file-info').style.display = 'none';
+        document.getElementById('kagit-preview').style.display = 'none';
+        document.getElementById('sistem-preview').style.display = 'none';
+        
+        // Butonları deaktif et
+        document.getElementById('kagit-next-btn').disabled = true;
+        document.getElementById('sistem-next-btn').disabled = true;
+        
+        // İlk adıma dön
+        showStep(1);
+    }
+    </script>
+</body>
+</html>
