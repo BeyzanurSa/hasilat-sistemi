@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -353,11 +352,6 @@
             position: sticky;
             top: 0;
         }
-
-        .masked-sicil {
-            font-family: monospace;
-            color: #6c757d;
-        }
     </style>
 </head>
 <body>
@@ -390,12 +384,12 @@
             <!-- Adım 1: Kağıt Verisi Yükleme -->
             <div id="step-1" class="step-content active">
                 <div class="alert alert-info">
-                    <strong>📝 Adım 1:</strong> Manuel girdi verisini içeren Excel dosyasını yükleyin. 
-                    Dosya YTP sicil numaraları ve tutar bilgilerini içermelidir.
+                    <strong>📝 Adım 1:</strong> Kağıt verisini içeren Excel dosyasını yükleyin. 
+                    Dosya "kağıt" sayfasında YTP sicil numaraları ve tutar bilgilerini içermelidir.
                 </div>
                 
                 <div class="form-group">
-                    <label>Manuel Girdi Verisi Excel Dosyası:</label>
+                    <label>Kağıt Verisi Excel Dosyası:</label>
                     <div class="file-upload-area" onclick="document.getElementById('kagit-file').click()">
                         <div class="upload-icon">📁</div>
                         <div class="upload-text">Excel dosyasını seçin veya sürükleyin</div>
@@ -418,12 +412,12 @@
             <!-- Adım 2: Sistem Verisi Yükleme -->
             <div id="step-2" class="step-content">
                 <div class="alert alert-info">
-                    <strong>💻 Adım 2:</strong> Kasa sisteminden çıkan Excel dosyasını yükleyin.
-                    Dosya SAP kasa sistemi verilerini içermelidir.
+                    <strong>💻 Adım 2:</strong> SAP sisteminden çıkan yapılandırılmamış Excel dosyasını yükleyin.
+                    Dosya "sistem yapılandırılmamış" sayfasında SAP verilerini içermelidir.
                 </div>
                 
                 <div class="form-group">
-                    <label>Kasa Sistemi Verisi Excel Dosyası:</label>
+                    <label>Sistem Verisi Excel Dosyası:</label>
                     <div class="file-upload-area" onclick="document.getElementById('sistem-file').click()">
                         <div class="upload-icon">💾</div>
                         <div class="upload-text">Excel dosyasını seçin veya sürükleyin</div>
@@ -489,17 +483,46 @@
         let kagitProcessedData = [];
         let sistemProcessedData = [];
         let comparisonResults = [];
-        let kagitColumnHeaders = [];
-        let sistemColumnHeaders = [];
         
-        // Sicil numarasını şifrele (ilk 3 ve son 3 hane görünür)
-        function maskSicil(sicil) {
+        // YTP Sicil No'yu şifreleyen fonksiyon
+        function maskSicilNo(sicil) {
             if (!sicil || sicil.length < 6) return sicil;
-            const first3 = sicil.substring(0, 3);
-            const last3 = sicil.substring(sicil.length - 3);
-            const middle = '*'.repeat(sicil.length - 6);
-            return first3 + middle + last3;
+            const str = String(sicil);
+            const firstThree = str.substring(0, 3);
+            const lastThree = str.substring(str.length - 3);
+            const masked = '*'.repeat(str.length - 6);
+            return firstThree + masked + lastThree;
         }
+        
+        // Kağıt verisi için sütun adları
+        const kagitColumnNames = [
+            'Sıra No',
+            'YTP Sicil No', 
+            'Ad Soyad',
+            'Nakit',
+            'Vakıf',
+            'Ziraat',
+            'Visa Toplam',
+            'Toplam'
+        ];
+        
+        // Sistem verisi için sütun adları
+        const sistemColumnNames = [
+            'Durum',
+            'Tayin',
+            'Kayıt Tarihi',
+            'Tutar',
+            'Fatura No',
+            'Mali Yıl',
+            'İş Alanı',
+            'Belge No',
+            'Müşteri',
+            'Müşteri Adı',
+            'Açıklama',
+            'Aktarılma Durumu',
+            'Muhasebe Belge No',
+            'Oluşturan/Onaylayan'
+        ];
         
         // Drag & Drop olayları
         document.addEventListener('DOMContentLoaded', function() {
@@ -566,11 +589,6 @@
                     const worksheet = workbook.Sheets[sheetName];
                     kagitRawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    // Sütun başlıklarını kaydet
-                    if (kagitRawData.length > 0) {
-                        kagitColumnHeaders = kagitRawData[0] || [];
-                    }
-                    
                     showKagitFileInfo(file, sheetName, kagitRawData.length);
                     previewKagitData();
                     document.getElementById('kagit-next-btn').disabled = false;
@@ -608,11 +626,6 @@
                     
                     const worksheet = workbook.Sheets[sheetName];
                     sistemRawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    // Sütun başlıklarını kaydet
-                    if (sistemRawData.length > 0) {
-                        sistemColumnHeaders = sistemRawData[0] || [];
-                    }
                     
                     showSistemFileInfo(file, sheetName, sistemRawData.length);
                     previewSistemData();
@@ -659,32 +672,28 @@
             
             let tableHTML = '<div class="preview-table"><table><thead><tr>';
             
-            // Header - gerçek sütun adlarını göster
-            if (kagitColumnHeaders.length > 0) {
-                kagitColumnHeaders.forEach(header => {
-                    tableHTML += `<th>${header || 'Boş Sütun'}</th>`;
-                });
-            } else if (previewData.length > 0) {
+            // Header - Kağıt verisi için özel sütun adları
+            if (previewData.length > 0 && previewData[0].length > 0) {
                 previewData[0].forEach((cell, index) => {
-                    tableHTML += `<th>Sütun ${index + 1}</th>`;
+                    const columnName = kagitColumnNames[index] || `Sütun ${index + 1}`;
+                    tableHTML += `<th>${columnName}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+                
+                // Data rows - YTP Sicil No'ları şifrele (2. sütun, index 1)
+                previewData.slice(1).forEach(row => {
+                    tableHTML += '<tr>';
+                    row.forEach((cell, index) => {
+                        let displayCell = cell || '';
+                        // YTP Sicil No sütununu şifrele
+                        if (index === 1 && cell) {
+                            displayCell = maskSicilNo(cell);
+                        }
+                        tableHTML += `<td>${displayCell}</td>`;
+                    });
+                    tableHTML += '</tr>';
                 });
             }
-            tableHTML += '</tr></thead><tbody>';
-            
-            // Data rows - ilk satır header ise atla
-            const dataRows = kagitColumnHeaders.length > 0 ? previewData.slice(1) : previewData;
-            dataRows.forEach(row => {
-                tableHTML += '<tr>';
-                row.forEach((cell, index) => {
-                    // Sicil numarası gibi görünen sütunları şifrele (2. sütun genelde sicil)
-                    let displayValue = cell || '';
-                    if (index === 1 && String(cell).match(/^\d{10,}$/)) {
-                        displayValue = `<span class="masked-sicil">${maskSicil(String(cell))}</span>`;
-                    }
-                    tableHTML += `<td>${displayValue}</td>`;
-                });
-                tableHTML += '</tr>';
-            });
             
             tableHTML += '</tbody></table></div>';
             preview.innerHTML = `<strong>Veri Önizleme:</strong>${tableHTML}`;
@@ -699,35 +708,32 @@
             
             let tableHTML = '<div class="preview-table"><table><thead><tr>';
             
-            // Header - gerçek sütun adlarını göster
-            if (sistemColumnHeaders.length > 0) {
-                sistemColumnHeaders.forEach(header => {
-                    tableHTML += `<th>${header || 'Boş Sütun'}</th>`;
-                });
-            } else if (previewData.length > 0) {
+            // Header - Sistem verisi için özel sütun adları
+            if (previewData.length > 0 && previewData[0].length > 0) {
                 previewData[0].forEach((cell, index) => {
-                    tableHTML += `<th>Sütun ${index + 1}</th>`;
+                    const columnName = sistemColumnNames[index] || `Sütun ${index + 1}`;
+                    tableHTML += `<th>${columnName}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+                
+                // Data rows - Oluşturan/Onaylayan sütunundaki sicil no'ları şifrele (14. sütun, index 13)
+                previewData.slice(1).forEach(row => {
+                    tableHTML += '<tr>';
+                    row.forEach((cell, index) => {
+                        let displayCell = cell || '';
+                        // Oluşturan/Onaylayan sütunundaki sicil no'yu şifrele
+                        if (index === 13 && cell && String(cell).includes('/')) {
+                            const parts = String(cell).split('/');
+                            if (parts.length >= 2 && /^\d+$/.test(parts[0].trim())) {
+                                const maskedSicil = maskSicilNo(parts[0].trim());
+                                displayCell = maskedSicil + '/' + parts.slice(1).join('/');
+                            }
+                        }
+                        tableHTML += `<td>${displayCell}</td>`;
+                    });
+                    tableHTML += '</tr>';
                 });
             }
-            tableHTML += '</tr></thead><tbody>';
-            
-            // Data rows - ilk satır header ise atla
-            const dataRows = sistemColumnHeaders.length > 0 ? previewData.slice(1) : previewData;
-            dataRows.forEach(row => {
-                tableHTML += '<tr>';
-                row.forEach((cell, index) => {
-                    // Sicil numarası içeren sütunları şifrele (Oluşturan/Onaylayan sütununda sicil var)
-                    let displayValue = cell || '';
-                    if (index === 13 && String(cell).includes('/')) {
-                        const parts = String(cell).split('/');
-                        if (parts.length > 0 && parts[0].match(/^\d{10,}$/)) {
-                            displayValue = `<span class="masked-sicil">${maskSicil(parts[0])}</span>/${parts.slice(1).join('/')}`;
-                        }
-                    }
-                    tableHTML += `<td>${displayValue}</td>`;
-                });
-                tableHTML += '</tr>';
-            });
             
             tableHTML += '</tbody></table></div>';
             preview.innerHTML = `<strong>Veri Önizleme:</strong>${tableHTML}`;
@@ -765,8 +771,8 @@
                 document.getElementById(`step-indicator-${i}`).classList.add('completed');
             }
         }
-
-                async function processData() {
+        
+        async function processData() {
             try {
                 document.getElementById('processing-status').textContent = 'Kağıt verisi yapılandırılıyor...';
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -802,139 +808,70 @@
             
             const processedData = [];
             
-            // Sütun indekslerini belirle (örneğin ad-soyad 2. sütunda olabilir, gerçek dosya yapınıza göre ayarlayın)
-            const sicilIndex = 1; // YTP Sicil No sütun indeksi
-            const adSoyadIndex = 2; // Ad-Soyad sütun indeksi (dosyanıza göre değiştirin)
-            const nakitIndex = 3;
-            const vakifIndex = 4;
-            const ziraatIndex = 5;
-            const visaToplamIndex = 6;
-            const toplamIndex = 7;
-            
+            // Sadece sayı içeren satırları al (Sicil numarası olarak)
             rawData.forEach(row => {
                 if (row.length >= 8 && row[0] && String(row[0]).match(/^\d+$/)) {
-                    const sicil = String(row[sicilIndex] || '').trim();
-                    const adSoyad = String(row[adSoyadIndex] || '').trim(); // Ad-soyadı doğrudan dosyadan al
-                    const nakit = parseFloat(row[nakitIndex]) || 0;
-                    const vakif = parseFloat(row[vakifIndex]) || 0;
-                    const ziraat = parseFloat(row[ziraatIndex]) || 0;
-                    const visaToplam = parseFloat(row[visaToplamIndex]) || (vakif + ziraat);
-                    const toplam = parseFloat(row[toplamIndex]) || (nakit + visaToplam);
+                    const sicil = String(row[1] || '').trim(); // YTP Sicil No (2. sütun)
+                    const nakit = parseFloat(row[3]) || 0;     // Nakit (4. sütun)
+                    const vakif = parseFloat(row[4]) || 0;     // Vakıf (5. sütun)
+                    const ziraat = parseFloat(row[5]) || 0;     // Ziraat (6. sütun)
+                    const visaToplam = parseFloat(row[6]) || 0; // Visa Toplam (7. sütun)
+                    const toplam = parseFloat(row[7]) || 0;     // Toplam (8. sütun)
                     
-                    if (sicil && sicil.length >= 10) {
+                    if (sicil && sicil.length > 0) {
                         processedData.push({
                             sicil: sicil,
-                            adSoyad: adSoyad || 'Bilgi Yok', // Eğer ad-soyad yoksa varsayılan değer
+                            adSoyad: row[2] || '',
                             nakit: nakit,
-                            visa: visaToplam,
-                            toplam: nakit + visaToplam
+                            vakif: vakif,
+                            ziraat: ziraat,
+                            visaToplam: visaToplam,
+                            toplam: toplam
                         });
                     }
                 }
             });
             
-            if (processedData.length === 0) {
-                throw new Error('Kağıt verisinde geçerli kayıt bulunamadı');
-            }
-            
             return processedData;
         }
-
+        
         function processSistemData(rawData) {
             if (!rawData || rawData.length === 0) {
                 throw new Error('Sistem verisi boş');
             }
             
-            // Sütun başlıklarını ve indekslerini belirle
-            // SAP çıktısına göre bu indeksleri ayarlamanız gerekebilir
-            const durumIndex = 0;
-            const tayinIndex = 1;
-            const tutarIndex = 3;
-            const isAlaniIndex = 6;
-            const olusturanIndex = 13;
-            const musteriAdiIndex = 9; // Müşteri Adı sütunu (dosyanıza göre değiştirin)
+            const processedData = [];
+            const sicilTutarMap = {};
             
-            const dataRows = rawData.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''));
+            // İlk satır başlık olabilir, onu atla
+            const dataRows = rawData.slice(1);
             
-            const extractedData = dataRows.map(row => {
-                const creator = String(row[olusturanIndex] || '');
-                let sicil = null;
-                
-                if (creator.includes('/')) {
-                    const sicilPart = creator.split('/')[0].trim();
-                    if (/^\d+$/.test(sicilPart)) {
-                        sicil = sicilPart;
+            dataRows.forEach(row => {
+                if (row.length >= 14) {
+                    const tutar = parseFloat(row[3]) || 0; // Tutar (4. sütun)
+                    const olusturanOnaylayan = String(row[13] || '').trim(); // Oluşturan/Onaylayan (14. sütun)
+                    
+                    // Sicil numarasını ayıkla (/ işaretinden önceki kısım)
+                    if (olusturanOnaylayan.includes('/')) {
+                        const sicil = olusturanOnaylayan.split('/')[0].trim();
+                        
+                        if (sicil && /^\d+$/.test(sicil) && tutar > 0) {
+                            if (!sicilTutarMap[sicil]) {
+                                sicilTutarMap[sicil] = 0;
+                            }
+                            sicilTutarMap[sicil] += tutar;
+                        }
                     }
                 }
-                
-                return {
-                    tayin: String(row[tayinIndex] || '').toUpperCase().trim(),
-                    tutar: parseFloat(row[tutarIndex]) || 0,
-                    isAlani: String(row[isAlaniIndex] || '').trim(),
-                    sicil: sicil,
-                    adSoyad: String(row[musteriAdiIndex] || '').trim() // Müşteri Adı sütunundan al
-                };
             });
             
-            // NAKIT ve VISA verilerini ayır
-            const nakitData = extractedData.filter(item => item.tayin === 'NAKIT' && item.sicil);
-            const visaData = extractedData.filter(item => item.tayin === 'VISA' && item.sicil);
-            
-            function getLastAmountPerPerson(dataList) {
-                const personMap = new Map();
-                
-                dataList.forEach((item, index) => {
-                    const key = `${item.sicil}_${item.isAlani}`;
-                    personMap.set(key, {
-                        sicil: item.sicil,
-                        adSoyad: item.adSoyad, // Ad-soyad bilgisini de sakla
-                        tutar: item.tutar,
-                        isAlani: item.isAlani,
-                        index: index
-                    });
-                });
-                
-                const sicilTotals = new Map();
-                const sicilNames = new Map(); // Sicil numarasına göre ad-soyad eşlemesi
-                
-                personMap.forEach(item => {
-                    if (sicilTotals.has(item.sicil)) {
-                        sicilTotals.set(item.sicil, sicilTotals.get(item.sicil) + item.tutar);
-                    } else {
-                        sicilTotals.set(item.sicil, item.tutar);
-                        sicilNames.set(item.sicil, item.adSoyad); // Ad-soyad bilgisini kaydet
-                    }
-                });
-                
-                return { totals: sicilTotals, names: sicilNames };
-            }
-            
-            const nakitResults = getLastAmountPerPerson(nakitData);
-            const visaResults = getLastAmountPerPerson(visaData);
-            
-            // Tüm sicil numaralarını al
-            const allSicils = new Set([...nakitResults.totals.keys(), ...visaResults.totals.keys()]);
-            
-            const processedData = [];
-            allSicils.forEach(sicil => {
-                // Öncelikle SAP'den gelen ad-soyad bilgisini kullan
-                let adSoyad = nakitResults.names.get(sicil) || visaResults.names.get(sicil) || 'Bilgi Yok';
-                
-                const nakitToplam = nakitResults.totals.get(sicil) || 0;
-                const visaToplam = visaResults.totals.get(sicil) || 0;
-                
+            // Map'i array'e çevir
+            Object.keys(sicilTutarMap).forEach(sicil => {
                 processedData.push({
                     sicil: sicil,
-                    adSoyad: adSoyad,
-                    nakit: nakitToplam,
-                    visa: visaToplam,
-                    toplam: nakitToplam + visaToplam
+                    toplam: sicilTutarMap[sicil]
                 });
             });
-            
-            if (processedData.length === 0) {
-                throw new Error('Sistem verisinde geçerli kayıt bulunamadı');
-            }
             
             return processedData;
         }
@@ -942,54 +879,45 @@
         function performComparison() {
             comparisonResults = [];
             
-            // Tüm sicil numaralarını al
-            const allSicils = new Set([
-                ...kagitProcessedData.map(item => item.sicil),
-                ...sistemProcessedData.map(item => item.sicil)
-            ]);
+            // Tüm kağıt verisindeki sicilleri kontrol et
+            kagitProcessedData.forEach(kagitItem => {
+                const sistemItem = sistemProcessedData.find(s => s.sicil === kagitItem.sicil);
+                
+                const result = {
+                    sicil: kagitItem.sicil,
+                    adSoyad: kagitItem.adSoyad,
+                    kagitToplam: kagitItem.toplam,
+                    sistemToplam: sistemItem ? sistemItem.toplam : 0,
+                    fark: kagitItem.toplam - (sistemItem ? sistemItem.toplam : 0),
+                    durum: ''
+                };
+                
+                // Durum belirleme
+                const tolerance = 0.01; // 1 kuruş tolerans
+                if (Math.abs(result.fark) <= tolerance) {
+                    result.durum = 'Eşleşiyor';
+                } else if (result.fark > 0) {
+                    result.durum = 'Kağıt Fazla';
+                } else {
+                    result.durum = 'Sistem Fazla';
+                }
+                
+                comparisonResults.push(result);
+            });
             
-            allSicils.forEach(sicil => {
-                const kagitItem = kagitProcessedData.find(item => item.sicil === sicil);
-                const sistemItem = sistemProcessedData.find(item => item.sicil === sicil);
-                
-                const kagitNakit = kagitItem ? kagitItem.nakit : 0;
-                const kagitVisa = kagitItem ? kagitItem.visa : 0;
-                const kagitToplam = kagitItem ? kagitItem.toplam : 0;
-                
-                const sistemNakit = sistemItem ? sistemItem.nakit : 0;
-                const sistemVisa = sistemItem ? sistemItem.visa : 0;
-                const sistemToplam = sistemItem ? sistemItem.toplam : 0;
-                
-                const nakitFark = kagitNakit - sistemNakit;
-                const visaFark = kagitVisa - sistemVisa;
-                const toplamFark = kagitToplam - sistemToplam;
-                
-                const nakitEslesme = Math.abs(nakitFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
-                const visaEslesme = Math.abs(visaFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
-                const toplamEslesme = Math.abs(toplamFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
-                
-                // Ad-soyad öncelik sırası: 1) Kağıttaki ad-soyad, 2) SAP'deki ad-soyad, 3) "Bilgi Yok"
-                const adSoyad = kagitItem ? kagitItem.adSoyad : 
-                                (sistemItem ? sistemItem.adSoyad : 'Bilgi Yok');
-                
-                comparisonResults.push({
-                    sicil: sicil,
-                    adSoyad: adSoyad,
-                    kagitNakit: kagitNakit,
-                    sistemNakit: sistemNakit,
-                    nakitFark: nakitFark,
-                    nakitEslesme: nakitEslesme,
-                    kagitVisa: kagitVisa,
-                    sistemVisa: sistemVisa,
-                    visaFark: visaFark,
-                    visaEslesme: visaEslesme,
-                    kagitToplam: kagitToplam,
-                    sistemToplam: sistemToplam,
-                    toplamFark: toplamFark,
-                    toplamEslesme: toplamEslesme,
-                    durum: kagitItem && sistemItem ? 'Her İkisinde de Var' : 
-                           kagitItem ? 'Sadece Kağıtta Var' : 'Sadece Sistemde Var'
-                });
+            // Sadece sistemde olan sicilleri de ekle
+            sistemProcessedData.forEach(sistemItem => {
+                const kagitExists = kagitProcessedData.find(k => k.sicil === sistemItem.sicil);
+                if (!kagitExists) {
+                    comparisonResults.push({
+                        sicil: sistemItem.sicil,
+                        adSoyad: 'Kağıtta Yok',
+                        kagitToplam: 0,
+                        sistemToplam: sistemItem.toplam,
+                        fark: -sistemItem.toplam,
+                        durum: 'Sadece Sistemde'
+                    });
+                }
             });
             
             // Sonuçları göster
@@ -997,167 +925,155 @@
         }
         
         function displayResults() {
-            // Özet kartlarını oluştur
+            displaySummaryCards();
+            displayResultsTable();
+        }
+        
+        function displaySummaryCards() {
+            const container = document.getElementById('summary-cards');
+            
             const totalRecords = comparisonResults.length;
-            const matchingRecords = comparisonResults.filter(item => 
-                item.nakitEslesme === 'Eşleşiyor' && 
-                item.visaEslesme === 'Eşleşiyor' && 
-                item.toplamEslesme === 'Eşleşiyor'
-            ).length;
-            const mismatchingRecords = totalRecords - matchingRecords;
+            const matchingRecords = comparisonResults.filter(r => r.durum === 'Eşleşiyor').length;
+            const mismatchRecords = totalRecords - matchingRecords;
+            const totalKagitAmount = comparisonResults.reduce((sum, r) => sum + r.kagitToplam, 0);
+            const totalSistemAmount = comparisonResults.reduce((sum, r) => sum + r.sistemToplam, 0);
+            const totalDifference = totalKagitAmount - totalSistemAmount;
             
-            const kagitTotalAmount = kagitProcessedData.reduce((sum, item) => sum + item.toplam, 0);
-            const sistemTotalAmount = sistemProcessedData.reduce((sum, item) => sum + item.toplam, 0);
-            const totalDifference = kagitTotalAmount - sistemTotalAmount;
-            
-            const summaryHTML = `
+            container.innerHTML = `
                 <div class="summary-card">
-                    <h3>Toplam Kayıt</h3>
+                    <h3>📊 Toplam Kayıt</h3>
                     <div class="number">${totalRecords}</div>
                 </div>
                 <div class="summary-card">
-                    <h3>Eşleşen Kayıt</h3>
-                    <div class="number" style="color: #28a745;">${matchingRecords}</div>
+                    <h3>✅ Eşleşen</h3>
+                    <div class="number">${matchingRecords}</div>
                 </div>
                 <div class="summary-card">
-                    <h3>Eşleşmeyen Kayıt</h3>
-                    <div class="number" style="color: #dc3545;">${mismatchingRecords}</div>
+                    <h3>❌ Eşleşmeyen</h3>
+                    <div class="number">${mismatchRecords}</div>
                 </div>
                 <div class="summary-card">
-                    <h3>Toplam Fark</h3>
-                    <div class="number" style="color: ${Math.abs(totalDifference) < 0.01 ? '#28a745' : '#dc3545'};">
-                        ${totalDifference.toFixed(2)} ₺
+                    <h3>💰 Kağıt Toplam</h3>
+                    <div class="number">${totalKagitAmount.toLocaleString('tr-TR')} ₺</div>
+                </div>
+                <div class="summary-card">
+                    <h3>💻 Sistem Toplam</h3>
+                    <div class="number">${totalSistemAmount.toLocaleString('tr-TR')} ₺</div>
+                </div>
+                <div class="summary-card">
+                    <h3>📈 Fark</h3>
+                    <div class="number" style="color: ${totalDifference >= 0 ? '#28a745' : '#dc3545'}">
+                        ${totalDifference.toLocaleString('tr-TR')} ₺
                     </div>
                 </div>
             `;
+        }
+        
+        function displayResultsTable() {
+            const container = document.getElementById('results-container');
             
-            document.getElementById('summary-cards').innerHTML = summaryHTML;
-            
-            // Detaylı sonuç tablosunu oluştur
             let tableHTML = `
+                <h3>📋 Detaylı Karşılaştırma Sonuçları</h3>
                 <table class="results-table">
                     <thead>
                         <tr>
                             <th>YTP Sicil No</th>
                             <th>Ad Soyad</th>
+                            <th>Kağıt Tutarı</th>
+                            <th>Sistem Tutarı</th>
+                            <th>Fark</th>
                             <th>Durum</th>
-                            <th colspan="3">Nakit</th>
-                            <th colspan="3">Visa</th>
-                            <th colspan="3">Toplam</th>
-                        </tr>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th>Kağıt</th>
-                            <th>Sistem</th>
-                            <th>Fark / Durum</th>
-                            <th>Kağıt</th>
-                            <th>Sistem</th>
-                            <th>Fark / Durum</th>
-                            <th>Kağıt</th>
-                            <th>Sistem</th>
-                            <th>Fark / Durum</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             
             comparisonResults.forEach(result => {
+                const statusClass = result.durum === 'Eşleşiyor' ? 'status-match' : 'status-mismatch';
+                const farkClass = result.fark > 0 ? 'status-mismatch' : result.fark < 0 ? 'status-mismatch' : 'status-match';
+                
                 tableHTML += `
                     <tr>
-                        <td><span class="masked-sicil">${maskSicil(result.sicil)}</span></td>
-                        <td><strong>${result.adSoyad}</strong></td>
-                        <td>${result.durum}</td>
-                        <td>${result.kagitNakit.toFixed(2)}</td>
-                        <td>${result.sistemNakit.toFixed(2)}</td>
-                        <td>
-                            ${result.nakitFark.toFixed(2)}<br>
-                            <span class="${result.nakitEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
-                                ${result.nakitEslesme}
-                            </span>
-                        </td>
-                        <td>${result.kagitVisa.toFixed(2)}</td>
-                        <td>${result.sistemVisa.toFixed(2)}</td>
-                        <td>
-                            ${result.visaFark.toFixed(2)}<br>
-                            <span class="${result.visaEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
-                                ${result.visaEslesme}
-                            </span>
-                        </td>
-                        <td>${result.kagitToplam.toFixed(2)}</td>
-                        <td>${result.sistemToplam.toFixed(2)}</td>
-                        <td>
-                            ${result.toplamFark.toFixed(2)}<br>
-                            <span class="${result.toplamEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
-                                ${result.toplamEslesme}
-                            </span>
-                        </td>
+                        <td>${maskSicilNo(result.sicil)}</td>
+                        <td>${result.adSoyad}</td>
+                        <td>${result.kagitToplam.toLocaleString('tr-TR')} ₺</td>
+                        <td>${result.sistemToplam.toLocaleString('tr-TR')} ₺</td>
+                        <td class="${farkClass}">${result.fark.toLocaleString('tr-TR')} ₺</td>
+                        <td class="${statusClass}">${result.durum}</td>
                     </tr>
                 `;
             });
             
-            tableHTML += `
-                    </tbody>
-                </table>
-            `;
-            
-            document.getElementById('results-container').innerHTML = tableHTML;
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
         }
         
         function exportResults() {
-            // Sonuçları Excel formatında indir
-            const ws_data = [
-                ['YTP Sicil No', 'Ad Soyad', 'Durum', 
-                 'Kağıt Nakit', 'Sistem Nakit', 'Nakit Fark', 'Nakit Eşleşme',
-                 'Kağıt Visa', 'Sistem Visa', 'Visa Fark', 'Visa Eşleşme',
-                 'Kağıt Toplam', 'Sistem Toplam', 'Toplam Fark', 'Toplam Eşleşme']
-            ];
-            
-            comparisonResults.forEach(result => {
-                ws_data.push([
-                    result.sicil, result.adSoyad, result.durum,
-                    result.kagitNakit, result.sistemNakit, result.nakitFark, result.nakitEslesme,
-                    result.kagitVisa, result.sistemVisa, result.visaFark, result.visaEslesme,
-                    result.kagitToplam, result.sistemToplam, result.toplamFark, result.toplamEslesme
-                ]);
-            });
-            
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Karşılaştırma Sonuçları");
-            
-            const today = new Date();
-            const dateStr = today.getFullYear() + '-' + 
-                           String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                           String(today.getDate()).padStart(2, '0');
-            
-            XLSX.writeFile(wb, `Hasilat_Karsilastirma_${dateStr}.xlsx`);
+            try {
+                // Sonuçları Excel formatında hazırla
+                const worksheetData = [
+                    ['YTP Sicil No', 'Ad Soyad', 'Kağıt Tutarı', 'Sistem Tutarı', 'Fark', 'Durum']
+                ];
+                
+                comparisonResults.forEach(result => {
+                    worksheetData.push([
+                        result.sicil, // Gerçek sicil numarası (şifrelenmemiş)
+                        result.adSoyad,
+                        result.kagitToplam,
+                        result.sistemToplam,
+                        result.fark,
+                        result.durum
+                    ]);
+                });
+                
+                // Excel dosyası oluştur
+                const workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                
+                // Sütun genişliklerini ayarla
+                worksheet['!cols'] = [
+                    { wch: 15 }, // YTP Sicil No
+                    { wch: 25 }, // Ad Soyad
+                    { wch: 15 }, // Kağıt Tutarı
+                    { wch: 15 }, // Sistem Tutarı
+                    { wch: 15 }, // Fark
+                    { wch: 15 }  // Durum
+                ];
+                
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Karşılaştırma Sonuçları');
+                
+                // Dosyayı indir
+                const fileName = `hasilat_karsilastirma_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                XLSX.writeFile(workbook, fileName);
+                
+            } catch (error) {
+                alert('Dışa aktarma hatası: ' + error.message);
+            }
         }
-    
-    function resetApp() {
-        // Tüm verileri sıfırla
-        kagitRawData = null;
-        sistemRawData = null;
-        kagitProcessedData = [];
-        sistemProcessedData = [];
-        comparisonResults = [];
         
-        // Form elemanlarını sıfırla
-        document.getElementById('kagit-file').value = '';
-        document.getElementById('sistem-file').value = '';
-        document.getElementById('kagit-file-info').style.display = 'none';
-        document.getElementById('sistem-file-info').style.display = 'none';
-        document.getElementById('kagit-preview').style.display = 'none';
-        document.getElementById('sistem-preview').style.display = 'none';
-        
-        // Butonları deaktif et
-        document.getElementById('kagit-next-btn').disabled = true;
-        document.getElementById('sistem-next-btn').disabled = true;
-        
-        // İlk adıma dön
-        showStep(1);
-    }
+        function resetApp() {
+            // Tüm verileri sıfırla
+            kagitRawData = null;
+            sistemRawData = null;
+            kagitProcessedData = [];
+            sistemProcessedData = [];
+            comparisonResults = [];
+            
+            // Form elementlerini sıfırla
+            document.getElementById('kagit-file').value = '';
+            document.getElementById('sistem-file').value = '';
+            document.getElementById('kagit-file-info').style.display = 'none';
+            document.getElementById('sistem-file-info').style.display = 'none';
+            document.getElementById('kagit-preview').style.display = 'none';
+            document.getElementById('sistem-preview').style.display = 'none';
+            
+            // Butonları devre dışı bırak
+            document.getElementById('kagit-next-btn').disabled = true;
+            document.getElementById('sistem-next-btn').disabled = true;
+            
+            // İlk adıma geri dön
+            showStep(1);
+        }
     </script>
 </body>
 </html>
