@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -13,6 +12,11 @@
             box-sizing: border-box;
         }
         
+        #results-container {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -210,6 +214,15 @@
             background: #1e7e34;
         }
         
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -358,6 +371,15 @@
             font-family: monospace;
             color: #6c757d;
         }
+
+        .skip-option {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
     </style>
 </head>
 <body>
@@ -378,10 +400,14 @@
             </div>
             <div class="step" id="step-indicator-3">
                 <div class="step-number">3</div>
-                <span>İşleme</span>
+                <span>İade Verisi</span>
             </div>
             <div class="step" id="step-indicator-4">
                 <div class="step-number">4</div>
+                <span>İşleme</span>
+            </div>
+            <div class="step" id="step-indicator-5">
+                <div class="step-number">5</div>
                 <span>Sonuçlar</span>
             </div>
         </div>
@@ -390,12 +416,12 @@
             <!-- Adım 1: Kağıt Verisi Yükleme -->
             <div id="step-1" class="step-content active">
                 <div class="alert alert-info">
-                    <strong>📝 Adım 1:</strong> Manuel girdi verisini içeren Excel dosyasını yükleyin. 
-                    Dosya YTP sicil numaraları ve tutar bilgilerini içermelidir.
+                    <strong>📝 Adım 1:</strong> Kağıt verisini içeren Excel dosyasını yükleyin. 
+                    Dosya "kağıt" sayfasında YTP sicil numaraları ve tutar bilgilerini içermelidir.
                 </div>
                 
                 <div class="form-group">
-                    <label>Manuel Girdi Verisi Excel Dosyası:</label>
+                    <label>Kağıt Verisi Excel Dosyası:</label>
                     <div class="file-upload-area" onclick="document.getElementById('kagit-file').click()">
                         <div class="upload-icon">📁</div>
                         <div class="upload-text">Excel dosyasını seçin veya sürükleyin</div>
@@ -418,12 +444,12 @@
             <!-- Adım 2: Sistem Verisi Yükleme -->
             <div id="step-2" class="step-content">
                 <div class="alert alert-info">
-                    <strong>💻 Adım 2:</strong> Kasa sisteminden çıkan Excel dosyasını yükleyin.
-                    Dosya SAP kasa sistemi verilerini içermelidir.
+                    <strong>💻 Adım 2:</strong> SAP sisteminden çıkan yapılandırılmamış Excel dosyasını yükleyin.
+                    Dosya "sistem yapılandırılmamış" sayfasında SAP verilerini içermelidir.
                 </div>
                 
                 <div class="form-group">
-                    <label>Kasa Sistemi Verisi Excel Dosyası:</label>
+                    <label>Sistem Verisi Excel Dosyası:</label>
                     <div class="file-upload-area" onclick="document.getElementById('sistem-file').click()">
                         <div class="upload-icon">💾</div>
                         <div class="upload-text">Excel dosyasını seçin veya sürükleyin</div>
@@ -440,13 +466,50 @@
                         ← Geri
                     </button>
                     <button class="btn btn-primary" onclick="nextStep(2)" id="sistem-next-btn" disabled>
+                        Devam Et →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Adım 3: İade Verisi Yükleme -->
+            <div id="step-3" class="step-content">
+                <div class="alert alert-info">
+                    <strong>📥 Adım 3:</strong> İade dosyası varsa yükleyin. İade tutarları negatif değer olarak işlenecektir.
+                    Bu adım isteğe bağlıdır, iade dosyanız yoksa atlayabilirsiniz.
+                </div>
+                
+                <div class="form-group">
+                    <label>İade Verisi Excel Dosyası (İsteğe Bağlı):</label>
+                    <div class="file-upload-area" onclick="document.getElementById('iade-file').click()">
+                        <div class="upload-icon">📥</div>
+                        <div class="upload-text">Excel dosyasını seçin veya sürükleyin</div>
+                        <div class="upload-hint">Desteklenen formatlar: .xlsx, .xls</div>
+                        <input type="file" id="iade-file" accept=".xlsx,.xls" onchange="handleIadeFile(this)">
+                    </div>
+                </div>
+                
+                <div class="skip-option">
+                    <p><strong>İade dosyanız yok mu?</strong></p>
+                    <button class="btn btn-warning" onclick="skipIadeFile()">
+                        İade Dosyası Olmadan Devam Et
+                    </button>
+                </div>
+                
+                <div id="iade-file-info" style="display: none;"></div>
+                <div id="iade-preview" style="display: none;"></div>
+                
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="previousStep(3)">
+                        ← Geri
+                    </button>
+                    <button class="btn btn-primary" onclick="nextStep(3)" id="iade-next-btn" disabled>
                         İşlemeye Başla →
                     </button>
                 </div>
             </div>
             
-            <!-- Adım 3: Veri İşleme -->
-            <div id="step-3" class="step-content">
+            <!-- Adım 4: Veri İşleme -->
+            <div id="step-4" class="step-content">
                 <div class="processing">
                     <div class="spinner"></div>
                     <h3>Veriler İşleniyor...</h3>
@@ -454,8 +517,8 @@
                 </div>
             </div>
             
-            <!-- Adım 4: Sonuçlar -->
-            <div id="step-4" class="step-content">
+            <!-- Adım 5: Sonuçlar -->
+            <div id="step-5" class="step-content">
                 <div class="alert alert-success">
                     <strong>✅ İşleme Tamamlandı!</strong> Aşağıda detaylı karşılaştırma sonuçlarını görebilirsiniz.
                 </div>
@@ -469,7 +532,7 @@
                 </div>
                 
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="previousStep(4)">
+                    <button class="btn btn-secondary" onclick="previousStep(5)">
                         ← Geri
                     </button>
                     <button class="btn btn-success" onclick="exportResults()">
@@ -486,21 +549,25 @@
     <script>
         let kagitRawData = null;
         let sistemRawData = null;
+        let iadeRawData = null;
         let kagitProcessedData = [];
         let sistemProcessedData = [];
+        let iadeProcessedData = [];
         let comparisonResults = [];
         let kagitColumnHeaders = [];
         let sistemColumnHeaders = [];
+        let iadeColumnHeaders = [];
+        let iadeFileSkipped = false;
         
         // Sicil numarasını şifrele (ilk 3 ve son 3 hane görünür)
         function maskSicil(sicil) {
-            if (!sicil || sicil.length < 6) return sicil;
+            if (!sicil || sicil.length < 7) return sicil;
             const first3 = sicil.substring(0, 3);
-            const last3 = sicil.substring(sicil.length - 3);
-            const middle = '*'.repeat(sicil.length - 6);
-            return first3 + middle + last3;
+            const last4 = sicil.substring(sicil.length - 4);
+            const middle = '*'.repeat(sicil.length - 7);
+            return first3 + middle + last4;
         }
-        
+    
         // Drag & Drop olayları
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
@@ -531,8 +598,10 @@
                         
                         if (fileInput.id === 'kagit-file') {
                             handleKagitFile(fileInput);
-                        } else {
+                        } else if (fileInput.id === 'sistem-file') {
                             handleSistemFile(fileInput);
+                        } else if (fileInput.id === 'iade-file') {
+                            handleIadeFile(fileInput);
                         }
                     }
                 });
@@ -554,7 +623,6 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    // "kağıt" sayfasını bul
                     const sheetName = workbook.SheetNames.find(name => 
                         name.toLowerCase().includes('kağıt') || name.toLowerCase().includes('kagit')
                     ) || workbook.SheetNames[0];
@@ -566,7 +634,6 @@
                     const worksheet = workbook.Sheets[sheetName];
                     kagitRawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    // Sütun başlıklarını kaydet
                     if (kagitRawData.length > 0) {
                         kagitColumnHeaders = kagitRawData[0] || [];
                     }
@@ -597,7 +664,6 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    // "sistem yapılandırılmamış" sayfasını bul
                     const sheetName = workbook.SheetNames.find(name => 
                         name.toLowerCase().includes('sistem') && name.toLowerCase().includes('yapılandır')
                     ) || workbook.SheetNames[0];
@@ -609,7 +675,6 @@
                     const worksheet = workbook.Sheets[sheetName];
                     sistemRawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    // Sütun başlıklarını kaydet
                     if (sistemRawData.length > 0) {
                         sistemColumnHeaders = sistemRawData[0] || [];
                     }
@@ -623,6 +688,65 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function handleIadeFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            if (!file.name.match(/\.(xlsx|xls)$/)) {
+                alert('Lütfen geçerli bir Excel dosyası seçin (.xlsx veya .xls)');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    const sheetName = workbook.SheetNames.find(name => 
+                        name.toLowerCase().includes('iade')
+                    ) || workbook.SheetNames[0];
+                    
+                    if (!sheetName) {
+                        throw new Error('Excel dosyasında sayfa bulunamadı');
+                    }
+                    
+                    const worksheet = workbook.Sheets[sheetName];
+                    iadeRawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (iadeRawData.length > 0) {
+                        iadeColumnHeaders = iadeRawData[0] || [];
+                    }
+                    
+                    showIadeFileInfo(file, sheetName, iadeRawData.length);
+                    previewIadeData();
+                    document.getElementById('iade-next-btn').disabled = false;
+                    iadeFileSkipped = false;
+                    
+                } catch (error) {
+                    alert('Dosya okuma hatası: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function skipIadeFile() {
+            iadeFileSkipped = true;
+            iadeRawData = null;
+            iadeProcessedData = [];
+            document.getElementById('iade-next-btn').disabled = false;
+            
+            // Bilgi mesajı göster
+            const info = document.getElementById('iade-file-info');
+            info.innerHTML = `
+                <div class="file-info" style="background: #fff3cd; border-color: #ffeaa7; color: #856404;">
+                    <strong>⚠️ İade Dosyası Atlandı:</strong><br>
+                    İade dosyası olmadan karşılaştırma yapılacak.
+                </div>
+            `;
+            info.style.display = 'block';
         }
         
         function showKagitFileInfo(file, sheetName, rowCount) {
@@ -651,6 +775,20 @@
             info.style.display = 'block';
         }
         
+        function showIadeFileInfo(file, sheetName, rowCount) {
+            const info = document.getElementById('iade-file-info');
+            info.innerHTML = `
+                <div class="file-info">
+                    <strong>✅ İade Dosyası Yüklendi:</strong><br>
+                    📁 Dosya: ${file.name}<br>
+                    📄 Sayfa: ${sheetName}<br>
+                    📊 Satır Sayısı: ${rowCount}<br>
+                    <small>ℹ️ İade tutarları otomatik olarak negatif değer olarak işlenecektir.</small>
+                </div>
+            `;
+            info.style.display = 'block';
+        }
+
         function previewKagitData() {
             if (!kagitRawData || kagitRawData.length === 0) return;
             
@@ -690,7 +828,7 @@
             preview.innerHTML = `<strong>Veri Önizleme:</strong>${tableHTML}`;
             preview.style.display = 'block';
         }
-        
+
         function previewSistemData() {
             if (!sistemRawData || sistemRawData.length === 0) return;
             
@@ -733,22 +871,66 @@
             preview.innerHTML = `<strong>Veri Önizleme:</strong>${tableHTML}`;
             preview.style.display = 'block';
         }
-        
-        function nextStep(currentStep) {
-            if (currentStep === 2) {
-                // İşleme adımına geç ve verileri işle
-                showStep(3);
-                processData();
-                return;
-            }
+
+        function previewIadeData() {
+            if (!iadeRawData || iadeRawData.length === 0) return;
             
-            showStep(currentStep + 1);
+            const preview = document.getElementById('iade-preview');
+            const previewData = iadeRawData.slice(0, 6); // İlk 6 satır
+            
+            let tableHTML = '<div class="preview-table"><table><thead><tr>';
+            
+            // Header - gerçek sütun adlarını göster
+            if (iadeColumnHeaders.length > 0) {
+                iadeColumnHeaders.forEach(header => {
+                    tableHTML += `<th>${header || 'Boş Sütun'}</th>`;
+                });
+            } else if (previewData.length > 0) {
+                previewData[0].forEach((cell, index) => {
+                    tableHTML += `<th>Sütun ${index + 1}</th>`;
+                });
+            }
+            tableHTML += '</tr></thead><tbody>';
+            
+            // Data rows - ilk satır header ise atla
+            const dataRows = iadeColumnHeaders.length > 0 ? previewData.slice(1) : previewData;
+            dataRows.forEach(row => {
+                tableHTML += '<tr>';
+                row.forEach((cell, index) => {
+                    // Sicil numarası içeren sütunları şifrele (Oluşturan/Onaylayan sütununda sicil var)
+                    let displayValue = cell || '';
+                    if (index === 13 && String(cell).includes('/')) {
+                        const parts = String(cell).split('/');
+                        if (parts.length > 0 && parts[0].match(/^\d{10,}$/)) {
+                            displayValue = `<span class="masked-sicil">${maskSicil(parts[0])}</span>/${parts.slice(1).join('/')}`;
+                        }
+                    }
+                    tableHTML += `<td>${displayValue}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+            
+            tableHTML += '</tbody></table></div>';
+            preview.innerHTML = `<strong>Veri Önizleme:</strong>${tableHTML}`;
+            preview.style.display = 'block';
         }
-        
+
+        function nextStep(currentStep) {
+            if (currentStep === 3) {
+                // 3. adımdan sonra işleme başlat
+                showStep(4); // İşleme adımını göster
+                setTimeout(() => {
+                    processData(); // İşleme fonksiyonunu çağır
+                }, 100); // Küçük bir gecikme ekledik animasyonun görüntülenmesi için
+            } else {
+                showStep(currentStep + 1);
+            }
+        }
+
         function previousStep(currentStep) {
             showStep(currentStep - 1);
         }
-        
+
         function showStep(stepNumber) {
             // Tüm adımları gizle
             document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
@@ -766,7 +948,7 @@
             }
         }
 
-                async function processData() {
+        async function processData() {
             try {
                 document.getElementById('processing-status').textContent = 'Kağıt verisi yapılandırılıyor...';
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -780,21 +962,38 @@
                 // Sistem verisini işle
                 sistemProcessedData = processSistemData(sistemRawData);
                 
+                // İade verisi kontrolü ve işlenmesi
+                if (!iadeFileSkipped && iadeRawData && iadeRawData.length > 0) {
+                    document.getElementById('processing-status').textContent = 'İade verisi yapılandırılıyor...';
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // İade verisini işle (negatif değerler olarak)
+                    iadeProcessedData = processIadeData(iadeRawData);
+                } else {
+                    iadeProcessedData = [];
+                }
+                
                 document.getElementById('processing-status').textContent = 'Veriler karşılaştırılıyor...';
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
                 // Karşılaştırma yap
                 performComparison();
                 
-                // Sonuçlar adımına geç
-                showStep(4);
+                // Sonuçlar adımına geç (5. adım)
+                showStep(5);
                 
             } catch (error) {
-                alert('Veri işleme hatası: ' + error.message);
-                showStep(2); // Geri dön
+                console.error("Veri işleme hatası:", error);
+                document.getElementById('processing-status').textContent = `Hata oluştu: ${error.message}`;
+                
+                // Hata durumunda kullanıcıyı bilgilendir
+                setTimeout(() => {
+                    alert(`Veri işleme sırasında hata oluştu:\n${error.message}`);
+                    showStep(3); // İade adımına geri dön
+                }, 500);
             }
         }
-        
+
         function processKagitData(rawData) {
             if (!rawData || rawData.length === 0) {
                 throw new Error('Kağıt verisi boş');
@@ -938,19 +1137,116 @@
             
             return processedData;
         }
-        
+
+        // İade verisi işleme fonksiyonu - tutarlar negatif olarak işlenir
+        function processIadeData(rawData) {
+            if (!rawData || rawData.length === 0) {
+                return [];
+            }
+            
+            // İade verisi sistem verisi formatında işlenir ancak tutarlar negatif yapılır
+            const durumIndex = 0;
+            const tayinIndex = 1;
+            const tutarIndex = 3;
+            const isAlaniIndex = 6;
+            const olusturanIndex = 13;
+            const musteriAdiIndex = 9;
+            
+            const dataRows = rawData.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''));
+            
+            const extractedData = dataRows.map(row => {
+                const creator = String(row[olusturanIndex] || '');
+                let sicil = null;
+                
+                if (creator.includes('/')) {
+                    const sicilPart = creator.split('/')[0].trim();
+                    if (/^\d+$/.test(sicilPart)) {
+                        sicil = sicilPart;
+                    }
+                }
+                
+                return {
+                    tayin: String(row[tayinIndex] || '').toUpperCase().trim(),
+                    tutar: Math.abs(parseFloat(row[tutarIndex]) || 0) * -1, // Tutarı negatif yap
+                    isAlani: String(row[isAlaniIndex] || '').trim(),
+                    sicil: sicil,
+                    adSoyad: String(row[musteriAdiIndex] || '').trim()
+                };
+            });
+            
+            // NAKIT ve VISA verilerini ayır
+            const nakitData = extractedData.filter(item => item.tayin === 'NAKIT' && item.sicil);
+            const visaData = extractedData.filter(item => item.tayin === 'VISA' && item.sicil);
+            
+            function getLastAmountPerPerson(dataList) {
+                const personMap = new Map();
+                
+                dataList.forEach((item, index) => {
+                    const key = `${item.sicil}_${item.isAlani}`;
+                    personMap.set(key, {
+                        sicil: item.sicil,
+                        adSoyad: item.adSoyad,
+                        tutar: item.tutar,
+                        isAlani: item.isAlani,
+                        index: index
+                    });
+                });
+                
+                const sicilTotals = new Map();
+                const sicilNames = new Map();
+                
+                personMap.forEach(item => {
+                    if (sicilTotals.has(item.sicil)) {
+                        sicilTotals.set(item.sicil, sicilTotals.get(item.sicil) + item.tutar);
+                    } else {
+                        sicilTotals.set(item.sicil, item.tutar);
+                        sicilNames.set(item.sicil, item.adSoyad);
+                    }
+                });
+                
+                return { totals: sicilTotals, names: sicilNames };
+            }
+            
+            const nakitResults = getLastAmountPerPerson(nakitData);
+            const visaResults = getLastAmountPerPerson(visaData);
+            
+            // Tüm sicil numaralarını al
+            const allSicils = new Set([...nakitResults.totals.keys(), ...visaResults.totals.keys()]);
+            
+            const processedData = [];
+            allSicils.forEach(sicil => {
+                let adSoyad = nakitResults.names.get(sicil) || visaResults.names.get(sicil) || 'Bilgi Yok';
+                
+                const nakitToplam = nakitResults.totals.get(sicil) || 0;
+                const visaToplam = visaResults.totals.get(sicil) || 0;
+                
+                processedData.push({
+                    sicil: sicil,
+                    adSoyad: adSoyad,
+                    nakit: nakitToplam,
+                    visa: visaToplam,
+                    toplam: nakitToplam + visaToplam
+                });
+            });
+            
+            return processedData;
+        }
+
+
         function performComparison() {
             comparisonResults = [];
             
-            // Tüm sicil numaralarını al
+            // Tüm sicil numaralarını al (kağıt, sistem ve iade)
             const allSicils = new Set([
                 ...kagitProcessedData.map(item => item.sicil),
-                ...sistemProcessedData.map(item => item.sicil)
+                ...sistemProcessedData.map(item => item.sicil),
+                ...iadeProcessedData.map(item => item.sicil)
             ]);
             
             allSicils.forEach(sicil => {
                 const kagitItem = kagitProcessedData.find(item => item.sicil === sicil);
                 const sistemItem = sistemProcessedData.find(item => item.sicil === sicil);
+                const iadeItem = iadeProcessedData.find(item => item.sicil === sicil);
                 
                 const kagitNakit = kagitItem ? kagitItem.nakit : 0;
                 const kagitVisa = kagitItem ? kagitItem.visa : 0;
@@ -960,9 +1256,19 @@
                 const sistemVisa = sistemItem ? sistemItem.visa : 0;
                 const sistemToplam = sistemItem ? sistemItem.toplam : 0;
                 
-                const nakitFark = kagitNakit - sistemNakit;
-                const visaFark = kagitVisa - sistemVisa;
-                const toplamFark = kagitToplam - sistemToplam;
+                // İade tutarları (zaten negatif olarak gelir)
+                const iadeNakit = iadeItem ? iadeItem.nakit : 0;
+                const iadeVisa = iadeItem ? iadeItem.visa : 0;
+                const iadeToplam = iadeItem ? iadeItem.toplam : 0;
+                
+                // Karşılaştırma: Kağıt = Sistem + İade
+                const sistemPlusIadeNakit = sistemNakit + iadeNakit;
+                const sistemPlusIadeVisa = sistemVisa + iadeVisa;
+                const sistemPlusIadeToplam = sistemToplam + iadeToplam;
+                
+                const nakitFark = kagitNakit - sistemPlusIadeNakit;
+                const visaFark = kagitVisa - sistemPlusIadeVisa;
+                const toplamFark = kagitToplam - sistemPlusIadeToplam;
                 
                 const nakitEslesme = Math.abs(nakitFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
                 const visaEslesme = Math.abs(visaFark) < 0.01 ? 'Eşleşiyor' : 'Eşleşmiyor';
@@ -972,30 +1278,53 @@
                 const adSoyad = kagitItem ? kagitItem.adSoyad : 
                                 (sistemItem ? sistemItem.adSoyad : 'Bilgi Yok');
                 
+                // Durum belirleme
+                let durum = '';
+                if (kagitItem && sistemItem && iadeItem) {
+                    durum = 'Üçünde de Var';
+                } else if (kagitItem && sistemItem) {
+                    durum = 'Kağıt ve Sistemde Var';
+                } else if (kagitItem && iadeItem) {
+                    durum = 'Kağıt ve İadede Var';
+                } else if (sistemItem && iadeItem) {
+                    durum = 'Sistem ve İadede Var';
+                } else if (kagitItem) {
+                    durum = 'Sadece Kağıtta Var';
+                } else if (sistemItem) {
+                    durum = 'Sadece Sistemde Var';
+                } else if (iadeItem) {
+                    durum = 'Sadece İadede Var';
+                }
+                
                 comparisonResults.push({
                     sicil: sicil,
                     adSoyad: adSoyad,
                     kagitNakit: kagitNakit,
                     sistemNakit: sistemNakit,
+                    iadeNakit: iadeNakit,
+                    sistemPlusIadeNakit: sistemPlusIadeNakit,
                     nakitFark: nakitFark,
                     nakitEslesme: nakitEslesme,
                     kagitVisa: kagitVisa,
                     sistemVisa: sistemVisa,
+                    iadeVisa: iadeVisa,
+                    sistemPlusIadeVisa: sistemPlusIadeVisa,
                     visaFark: visaFark,
                     visaEslesme: visaEslesme,
                     kagitToplam: kagitToplam,
                     sistemToplam: sistemToplam,
+                    iadeToplam: iadeToplam,
+                    sistemPlusIadeToplam: sistemPlusIadeToplam,
                     toplamFark: toplamFark,
                     toplamEslesme: toplamEslesme,
-                    durum: kagitItem && sistemItem ? 'Her İkisinde de Var' : 
-                           kagitItem ? 'Sadece Kağıtta Var' : 'Sadece Sistemde Var'
+                    durum: durum
                 });
             });
             
             // Sonuçları göster
             displayResults();
         }
-        
+
         function displayResults() {
             // Özet kartlarını oluştur
             const totalRecords = comparisonResults.length;
@@ -1008,7 +1337,8 @@
             
             const kagitTotalAmount = kagitProcessedData.reduce((sum, item) => sum + item.toplam, 0);
             const sistemTotalAmount = sistemProcessedData.reduce((sum, item) => sum + item.toplam, 0);
-            const totalDifference = kagitTotalAmount - sistemTotalAmount;
+            const iadeTotalAmount = iadeProcessedData.reduce((sum, item) => sum + item.toplam, 0);
+            const totalDifference = kagitTotalAmount - (sistemTotalAmount + iadeTotalAmount);
             
             const summaryHTML = `
                 <div class="summary-card">
@@ -1033,30 +1363,33 @@
             
             document.getElementById('summary-cards').innerHTML = summaryHTML;
             
+            // İade dosyasının varlığını kontrol et
+            const hasIadeData = iadeProcessedData.length > 0;
+            
             // Detaylı sonuç tablosunu oluştur
             let tableHTML = `
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>YTP Sicil No</th>
-                            <th>Ad Soyad</th>
-                            <th>Durum</th>
-                            <th colspan="3">Nakit</th>
-                            <th colspan="3">Visa</th>
-                            <th colspan="3">Toplam</th>
+                            <th rowspan="2">YTP Sicil No</th>
+                            <th rowspan="2">Ad Soyad</th>
+                            <th rowspan="2">Durum</th>
+                            <th colspan="${hasIadeData ? '5' : '3'}">Nakit</th>
+                            <th colspan="${hasIadeData ? '5' : '3'}">Visa</th>
+                            <th colspan="${hasIadeData ? '5' : '3'}">Toplam</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
                             <th>Kağıt</th>
                             <th>Sistem</th>
+                            ${hasIadeData ? '<th>İade</th><th>Sistem+İade</th>' : ''}
                             <th>Fark / Durum</th>
                             <th>Kağıt</th>
                             <th>Sistem</th>
+                            ${hasIadeData ? '<th>İade</th><th>Sistem+İade</th>' : ''}
                             <th>Fark / Durum</th>
                             <th>Kağıt</th>
                             <th>Sistem</th>
+                            ${hasIadeData ? '<th>İade</th><th>Sistem+İade</th>' : ''}
                             <th>Fark / Durum</th>
                         </tr>
                     </thead>
@@ -1071,6 +1404,8 @@
                         <td>${result.durum}</td>
                         <td>${result.kagitNakit.toFixed(2)}</td>
                         <td>${result.sistemNakit.toFixed(2)}</td>
+                        ${hasIadeData ? `<td style="color: #dc3545;">${result.iadeNakit.toFixed(2)}</td>` : ''}
+                        ${hasIadeData ? `<td>${result.sistemPlusIadeNakit.toFixed(2)}</td>` : ''}
                         <td>
                             ${result.nakitFark.toFixed(2)}<br>
                             <span class="${result.nakitEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
@@ -1079,6 +1414,8 @@
                         </td>
                         <td>${result.kagitVisa.toFixed(2)}</td>
                         <td>${result.sistemVisa.toFixed(2)}</td>
+                        ${hasIadeData ? `<td style="color: #dc3545;">${result.iadeVisa.toFixed(2)}</td>` : ''}
+                        ${hasIadeData ? `<td>${result.sistemPlusIadeVisa.toFixed(2)}</td>` : ''}
                         <td>
                             ${result.visaFark.toFixed(2)}<br>
                             <span class="${result.visaEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
@@ -1087,6 +1424,8 @@
                         </td>
                         <td>${result.kagitToplam.toFixed(2)}</td>
                         <td>${result.sistemToplam.toFixed(2)}</td>
+                        ${hasIadeData ? `<td style="color: #dc3545;">${result.iadeToplam.toFixed(2)}</td>` : ''}
+                        ${hasIadeData ? `<td>${result.sistemPlusIadeToplam.toFixed(2)}</td>` : ''}
                         <td>
                             ${result.toplamFark.toFixed(2)}<br>
                             <span class="${result.toplamEslesme === 'Eşleşiyor' ? 'status-match' : 'status-mismatch'}">
@@ -1104,23 +1443,60 @@
             
             document.getElementById('results-container').innerHTML = tableHTML;
         }
-        
+
         function exportResults() {
-            // Sonuçları Excel formatında indir
-            const ws_data = [
-                ['YTP Sicil No', 'Ad Soyad', 'Durum', 
-                 'Kağıt Nakit', 'Sistem Nakit', 'Nakit Fark', 'Nakit Eşleşme',
-                 'Kağıt Visa', 'Sistem Visa', 'Visa Fark', 'Visa Eşleşme',
-                 'Kağıt Toplam', 'Sistem Toplam', 'Toplam Fark', 'Toplam Eşleşme']
-            ];
+            // İade dosyasının varlığını kontrol et
+            const hasIadeData = iadeProcessedData.length > 0;
+            
+            // Başlık satırını oluştur
+            const headers = ['YTP Sicil No', 'Ad Soyad', 'Durum', 
+                            'Kağıt Nakit', 'Sistem Nakit'];
+            
+            if (hasIadeData) {
+                headers.push('İade Nakit', 'Sistem+İade Nakit');
+            }
+            
+            headers.push('Nakit Fark', 'Nakit Eşleşme', 'Kağıt Visa', 'Sistem Visa');
+            
+            if (hasIadeData) {
+                headers.push('İade Visa', 'Sistem+İade Visa');
+            }
+            
+            headers.push('Visa Fark', 'Visa Eşleşme', 'Kağıt Toplam', 'Sistem Toplam');
+            
+            if (hasIadeData) {
+                headers.push('İade Toplam', 'Sistem+İade Toplam');
+            }
+            
+            headers.push('Toplam Fark', 'Toplam Eşleşme');
+            
+            const ws_data = [headers];
             
             comparisonResults.forEach(result => {
-                ws_data.push([
+                const row = [
                     result.sicil, result.adSoyad, result.durum,
-                    result.kagitNakit, result.sistemNakit, result.nakitFark, result.nakitEslesme,
-                    result.kagitVisa, result.sistemVisa, result.visaFark, result.visaEslesme,
-                    result.kagitToplam, result.sistemToplam, result.toplamFark, result.toplamEslesme
-                ]);
+                    result.kagitNakit, result.sistemNakit
+                ];
+                
+                if (hasIadeData) {
+                    row.push(result.iadeNakit, result.sistemPlusIadeNakit);
+                }
+                
+                row.push(result.nakitFark, result.nakitEslesme, result.kagitVisa, result.sistemVisa);
+                
+                if (hasIadeData) {
+                    row.push(result.iadeVisa, result.sistemPlusIadeVisa);
+                }
+                
+                row.push(result.visaFark, result.visaEslesme, result.kagitToplam, result.sistemToplam);
+                
+                if (hasIadeData) {
+                    row.push(result.iadeToplam, result.sistemPlusIadeToplam);
+                }
+                
+                row.push(result.toplamFark, result.toplamEslesme);
+                
+                ws_data.push(row);
             });
             
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -1129,35 +1505,49 @@
             
             const today = new Date();
             const dateStr = today.getFullYear() + '-' + 
-                           String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                           String(today.getDate()).padStart(2, '0');
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(today.getDate()).padStart(2, '0');
             
             XLSX.writeFile(wb, `Hasilat_Karsilastirma_${dateStr}.xlsx`);
         }
-    
-    function resetApp() {
-        // Tüm verileri sıfırla
-        kagitRawData = null;
-        sistemRawData = null;
-        kagitProcessedData = [];
-        sistemProcessedData = [];
-        comparisonResults = [];
-        
-        // Form elemanlarını sıfırla
-        document.getElementById('kagit-file').value = '';
-        document.getElementById('sistem-file').value = '';
-        document.getElementById('kagit-file-info').style.display = 'none';
-        document.getElementById('sistem-file-info').style.display = 'none';
-        document.getElementById('kagit-preview').style.display = 'none';
-        document.getElementById('sistem-preview').style.display = 'none';
-        
-        // Butonları deaktif et
-        document.getElementById('kagit-next-btn').disabled = true;
-        document.getElementById('sistem-next-btn').disabled = true;
-        
-        // İlk adıma dön
-        showStep(1);
-    }
+
+        function resetApp() {
+            // Tüm verileri sıfırla
+            kagitRawData = null;
+            sistemRawData = null;
+            iadeRawData = null; // İade verisi de sıfırlanmalı
+            kagitProcessedData = [];
+            sistemProcessedData = [];
+            iadeProcessedData = []; // İade verisi de sıfırlanmalı
+            comparisonResults = [];
+            
+            // Form elemanlarını sıfırla
+            document.getElementById('kagit-file').value = '';
+            document.getElementById('sistem-file').value = '';
+            if (document.getElementById('iade-file')) {
+                document.getElementById('iade-file').value = '';
+            }
+            document.getElementById('kagit-file-info').style.display = 'none';
+            document.getElementById('sistem-file-info').style.display = 'none';
+            if (document.getElementById('iade-file-info')) {
+                document.getElementById('iade-file-info').style.display = 'none';
+            }
+            document.getElementById('kagit-preview').style.display = 'none';
+            document.getElementById('sistem-preview').style.display = 'none';
+            if (document.getElementById('iade-preview')) {
+                document.getElementById('iade-preview').style.display = 'none';
+            }
+            
+            // Butonları deaktif et
+            document.getElementById('kagit-next-btn').disabled = true;
+            document.getElementById('sistem-next-btn').disabled = true;
+            if (document.getElementById('iade-next-btn')) {
+                document.getElementById('iade-next-btn').disabled = true;
+            }
+            
+            // İlk adıma dön
+            showStep(1);
+        }
     </script>
 </body>
 </html>
